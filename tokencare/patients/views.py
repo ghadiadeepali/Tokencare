@@ -13,8 +13,8 @@ def get_patients(request):
     
     if patients:
         output_serializer = PatientSerializer(patients, many=True)
-        return Response(output_serializer.data)
-    return Response({"message": "Patients not found"})
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+    return Response({"message": "No patients found"}, status=status.HTTP_400_NOT_FOUND)
 
 @api_view(["POST"])
 def add_patient_public_api(request):
@@ -23,9 +23,9 @@ def add_patient_public_api(request):
         try:
             patient = serializer.save()
             output = PatientSerializer(patient)
-            return Response(output.data, status=201)
+            return Response(output.data, status=status.HTTP_201_CREATED)
         except IntegrityError:
             return Response(
-                {"error": "Patient with this phone number already exists. Hence token number will be provided"})
-    return Response({"msg":serializer.errors})
+                {"error": "Patient with this phone number already exists. Hence token number will be provided"}, status=status.HTTP_409_CONFLICT)
+    return Response({"msg":serializer.errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
