@@ -10,11 +10,9 @@ from rest_framework.response import Response
 @api_view(["GET"])
 def get_patients(request):
     patients = Patient.objects.all()
+    output_serializer = PatientSerializer(patients, many=True)
+    return Response(output_serializer.data, status=status.HTTP_200_OK)
     
-    if patients:
-        output_serializer = PatientSerializer(patients, many=True)
-        return Response(output_serializer.data, status=status.HTTP_200_OK)
-    return Response({"message": "No patients found"}, status=status.HTTP_400_NOT_FOUND)
 
 @api_view(["POST"])
 def add_patient_public_api(request):
@@ -27,5 +25,5 @@ def add_patient_public_api(request):
         except IntegrityError:
             return Response(
                 {"error": "Patient with this phone number already exists. Hence token number will be provided"}, status=status.HTTP_409_CONFLICT)
-    return Response({"msg":serializer.errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response({"msg":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
