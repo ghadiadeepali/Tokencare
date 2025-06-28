@@ -17,7 +17,7 @@ def get_patients(request):
     return Response({"message": "Patients not found"})
 
 @api_view(["POST"])
-def add_patient(request):
+def add_patient_public_api(request):
     serializer = NewPatientSerializer(data = request.data)
     if serializer.is_valid():
         try:
