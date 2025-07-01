@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "patients",
-    "rest_framework"
+    "rest_framework",
+    "tokens"
 ]
 
 MIDDLEWARE = [
