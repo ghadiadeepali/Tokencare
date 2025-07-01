@@ -19,22 +19,39 @@ def get_patients(request):
 @api_view(["POST"])
 def add_patient_public_api(request):
     phone_no = request.data.get("phone_no")
-    db_instance = OTP.objects.filter(phone_no=phone_no)
-    if db_instance:
-        is_active = OTP.objects.filter(expires_at__gt=timezone.now(), phone_no=phone_no)
-        if is_active:
-            serializer = NewPatientSerializer(data = request.data)
-            if serializer.is_valid():
-                try:
-                    patient = serializer.save()
-                    output = PatientSerializer(patient)
-                    return Response(output.data, status=status.HTTP_201_CREATED)
-                except IntegrityError:
-                    return Response(
-                        {"error": "Patient with this phone number already exists. Hence token number will be provided"}, status=status.HTTP_409_CONFLICT)
-            return Response({"msg":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-        return Response ({"msg": "OTP is invalid or has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
-    return Response({"msg":"Phone Number not registered. Kindly request OTP for registration"})
+    patient_name = request.data.get("name")
+    otp = request.data.get("otp")
+    
+    # check if patient already exists
+    if Patient.objects.filter(phone_no=phone_no, name=patient_name).exists():
+        return Response({"error": "Patient already exists. Hence token number will be provided"}, status=status.HTTP_409_CONFLICT)
+    
+    # if not registered, check if otp generated for this number
+    # can have multiple otp requests that are not expired
+    otp_queryset = OTP.objects.filter(phone_no=phone_no, expires_at__gt=timezone.now()).order_by("-created_at")
+    if not otp_queryset.exists():
+        return Response({"detail": "Please request an OTP first."},
+            status=status.HTTP_400_BAD_REQUEST)
+        
+    # check for latest otp
+    latest_otp = otp_queryset.first()
+    if latest_otp.expires_at < timezone.now():
+        return Response({"msg": "OTP has expired. Please request a new one."}, status=400)
+
+    if latest_otp.otp != otp:
+        return Response({"msg": "Invalid OTP. Please try again."}, status=400)
+    
+         
+    # validate and save new patient
+    serializer = NewPatientSerializer(data = request.data)
+    if serializer.is_valid():
+        patient = serializer.save()
+        output = PatientSerializer(patient)
+        return Response(output.data, status=status.HTTP_201_CREATED)
+                      
+    return Response({"msg":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    
 
 # generate OTP  
 @api_view(["POST"])
