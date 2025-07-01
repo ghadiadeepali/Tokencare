@@ -7,6 +7,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import random
 from django.utils import timezone
+from tokens.views import generate_token
+from tokens.models import Token
 # Create your views here.
 
 @api_view(["GET"])
@@ -16,40 +18,43 @@ def get_patients(request):
     return Response(output_serializer.data, status=status.HTTP_200_OK)
     
 # validate OTP and add new patient
+# validate OTP and add new patient
 @api_view(["POST"])
 def add_patient_public_api(request):
     phone_no = request.data.get("phone_no")
     patient_name = request.data.get("name")
-    otp = request.data.get("otp")
-    
-    # check if patient already exists
-    if Patient.objects.filter(phone_no=phone_no, name=patient_name).exists():
-        return Response({"error": "Patient already exists. Hence token number will be provided"}, status=status.HTTP_409_CONFLICT)
-    
-    # if not registered, check if otp generated for this number
-    # can have multiple otp requests that are not expired
-    otp_queryset = OTP.objects.filter(phone_no=phone_no, expires_at__gt=timezone.now()).order_by("-created_at")
-    if not otp_queryset.exists():
-        return Response({"detail": "Please request an OTP first."},
-            status=status.HTTP_400_BAD_REQUEST)
-        
-    # check for latest otp
-    latest_otp = otp_queryset.first()
-    if latest_otp.expires_at < timezone.now():
-        return Response({"msg": "OTP has expired. Please request a new one."}, status=400)
+    otp_input = request.data.get("otp") 
 
-    if latest_otp.otp != otp:
-        return Response({"msg": "Invalid OTP. Please try again."}, status=400)
-    
-         
-    # validate and save new patient
-    serializer = NewPatientSerializer(data = request.data)
+    # If patient already exists, just return a fresh token
+    patient = Patient.objects.filter(phone_no=phone_no, name=patient_name).first()
+    if patient:
+        # check if token already generated
+        db_token = Token.objects.filter(patient=patient.id).first()
+        if not db_token:
+            token = generate_token(patient_id=patient.id)
+        else:
+            token = db_token.token_number
+        return Response({"msg": f"Your token number is {token}"})
+
+    # Latest *valid* OTP (expired ones are already purged by Celery)
+    latest_otp = (OTP.objects.filter(phone_no=phone_no, expires_at__gt=timezone.now()).order_by("-created_at").first())
+
+    if latest_otp is None:
+        return Response({"detail": "OTP is either expired or not generated. Please request OTP first."},status=status.HTTP_400_BAD_REQUEST)
+
+    if latest_otp.otp != otp_input:
+        return Response({"msg": "Invalid OTP. Please try again."},status=status.HTTP_400_BAD_REQUEST)
+
+    # Passed OTP check – create the patient
+    serializer = NewPatientSerializer(data=request.data)
     if serializer.is_valid():
         patient = serializer.save()
-        output = PatientSerializer(patient)
-        return Response(output.data, status=status.HTTP_201_CREATED)
-                      
-    return Response({"msg":serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        token   = generate_token(patient_id=patient.id) 
+        return Response({"msg": f"Your token number is {token}"},
+                        status=status.HTTP_201_CREATED)
+
+    # Validation errors
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
 
