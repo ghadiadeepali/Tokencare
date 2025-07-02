@@ -9,6 +9,7 @@ import random
 from django.utils import timezone
 from tokens.views import generate_token
 from tokens.models import Token
+from patients.tasks import add_numbers
 # Create your views here.
 
 @api_view(["GET"])
@@ -79,3 +80,13 @@ def generate_otp(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(["POST"])
+def sum(request):
+    a = request.data.get("a")
+    b = request.data.get("b")
+    result = add_numbers.delay(a, b)
+    
+    return Response({
+            "message": "Task submitted successfully",
+            "task_id": result.id,
+        })
