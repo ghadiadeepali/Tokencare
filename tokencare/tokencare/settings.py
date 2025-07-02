@@ -112,7 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -128,3 +128,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Adding broker url
+# Tells Celery where to send and receive tasks from (in our case, Redis from Upstash).
+CELERY_BROKER_URL = "rediss://default:AV04AAIjcDEwNTE0NGE4NDQ1MWE0Yzc4YWU3YzA2MGQ4N2M0YjQ0NXAxMA@ready-heron-23864.upstash.io:6379"
+CELERY_ACCEPT_CONTENT = ['json'] # We accept tasks in json format.
+CELERY_TASK_SERIALIZER = 'json' # We send tasks in json format too.
