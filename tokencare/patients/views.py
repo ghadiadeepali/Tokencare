@@ -9,7 +9,7 @@ import random
 from django.utils import timezone
 from tokens.views import generate_token
 from tokens.models import Token
-from patients.tasks import add_numbers
+from patients.tasks import add_numbers, send_token_message
 # Create your views here.
 
 @api_view(["GET"])
@@ -18,7 +18,7 @@ def get_patients(request):
     output_serializer = PatientSerializer(patients, many=True)
     return Response(output_serializer.data, status=status.HTTP_200_OK)
     
-# validate OTP and add new patient
+
 # validate OTP and add new patient
 @api_view(["POST"])
 def add_patient_public_api(request):
@@ -35,6 +35,8 @@ def add_patient_public_api(request):
             token = generate_token(patient_id=patient.id)
         else:
             token = db_token.token_number
+        print("MESSAGE IN PROGRESS+++++++++++++++++++++++++++++++")
+        send_token_message.delay(phone_no, token)
         return Response({"msg": f"Your token number is {token}"})
 
     # Latest *valid* OTP (expired ones are already purged by Celery)
@@ -51,6 +53,9 @@ def add_patient_public_api(request):
     if serializer.is_valid():
         patient = serializer.save()
         token   = generate_token(patient_id=patient.id) 
+        
+        # send message 
+        send_token_message.delay(phone_no, token)
         return Response({"msg": f"Your token number is {token}"},
                         status=status.HTTP_201_CREATED)
 
@@ -80,13 +85,3 @@ def generate_otp(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["POST"])
-def sum(request):
-    a = request.data.get("a")
-    b = request.data.get("b")
-    result = add_numbers.delay(a, b)
-    
-    return Response({
-            "message": "Task submitted successfully",
-            "task_id": result.id,
-        })
