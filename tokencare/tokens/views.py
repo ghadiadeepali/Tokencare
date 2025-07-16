@@ -18,9 +18,4 @@ def generate_token(patient_id):
     serializer = NewTokenSerializer(data=data)
     if serializer.is_valid():
         serializer.save()
-        print("__________________________")
-        print("Serializse.data inside generate token fix", serializer.data)
         return next_token
-
-def list_tokens(request):
-    return HttpResponse("<h1>Welcome to tokens module of Tokencare</h1>")
