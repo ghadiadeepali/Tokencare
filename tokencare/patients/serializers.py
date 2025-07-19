@@ -12,10 +12,17 @@ class NewPatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Patient
         fields = ['name', 'phone_no', 'age', "otp"]
+    
         
     def create(self, validated_data):
         validated_data.pop('otp', None)  # 🚨 Remove otp before passing to model
         return models.Patient.objects.create(**validated_data)
+    
+class NewPatientSerializerStaff(serializers.ModelSerializer):
+    class Meta:
+        model = models.Patient
+        fields = ['name', 'phone_no', 'age']
+    
     
 class NewOTPSerializer(serializers.ModelSerializer):
     class Meta:
