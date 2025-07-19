@@ -9,7 +9,7 @@ import random
 from django.utils import timezone
 from tokens.views import generate_token
 from tokens.models import Token
-from patients.tasks import add_numbers, send_token_message
+from patients.tasks import send_token_message
 # Create your views here.
 
 @api_view(["GET"])
